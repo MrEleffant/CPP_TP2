@@ -1,6 +1,7 @@
 
 #include "Sinus.hpp"
 
+
 //----------------------------------------------------------------------
 /*
 Sinus::Sinus(const SinusParam &SinusParameters, const ComputeParameters &SimulParameters):SimulParams{SimulParameters},Parameters{SinusParameters}{

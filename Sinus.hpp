@@ -13,16 +13,15 @@
 #include <vector>
 #include <cmath>
 #include <filesystem>
-#include "ComputeParameters.h"
 
 constexpr	unsigned int	defaultNbPoints = 100;	/**< Default number of points : 100	*/
-constexpr	float 			defaulttStart = 0;		/**< Default start time : 0 (sec)	*/
-constexpr	float 			defaulttStop = 1;		/**< Default stop time : 1 (sec)	*/
+constexpr	float 			defaultStart = 0;		/**< Default start time : 0 (sec)	*/
+constexpr	float 			defaultStop = 1;		/**< Default stop time : 1 (sec)	*/
 
-constexpr float defaultA0 = 1;
-constexpr float defaultAmplitude = 1;
-constexpr float defaultOmega = 2*std::numbers::pi;
-constexpr float defaultPhi0 = 0;
+constexpr float             defaultOmega=(2*std::numbers::pi);
+constexpr float             defaultPhi0=0;
+constexpr float             defaultAmplitude=1;
+constexpr float             defaultA0 = 0;
 
 /**
  *	Type SinusParam : Signal caractéristics
@@ -36,6 +35,12 @@ struct	SinusParam{
 		float 	Omega;						/**<  Angular frequency  (rad.s-1) */
 		float 	Phi0;						/**<  Phase at t=0		*/
 	};
+
+struct ComputeParameters{
+    float tstart;
+    float tstop;
+    unsigned int nbPoints;
+};
 
 /**
  *	Type SignalPoint 
@@ -63,46 +68,37 @@ class SinusComputeHelper{
 		~SinusComputeHelper() = default;
 };
 
-
-// approx equality between 2 floats
-
-bool approxEqual(float a, float b, float epsilon = 0.001f) noexcept;
-
-
 /**
  *	Sinus class (standalone version)
  */ 	
 class Sinus{
 	private:
 
+    mutable std::vector<SignalPoint> tabSignal{};
+	SinusParam Parameters{defaultA0, defaultAmplitude, defaultOmega, defaultPhi0};	/**< Sinus parameters */
+    ComputeParameters SimulParams{defaultStart,defaultStop,defaultNbPoints};
 
-    SinusParam Parameters{defaultA0, defaultAmplitude, defaultOmega, defaultPhi0};	/**< Sinus parameters */
-	
 	mutable	bool	needToRecompute{true};											/**< Flag set if the signal needs to be "recomputed" (change of params)	*/ 
 		
 	SinusComputeHelper	helper{};													/**< Composition of the helper class		*/
 	
 	/**
 	 * Compute (private) method
-	 * 		links to the Compute public method of the helper
+	 * 		links to the Compute public method of the helper 
 	 * 
 	 * const : callable with a const object  
 	 * noexcept : this method throws no exception
 	 * 
 	 */
-    std::vector<SignalPoint> tabSignal;
-    const ComputeParameters &SimulParams;
-	void compute() const noexcept {this->tabSignal = this->helper.Compute(this->Parameters, this->SimulParams);};
+	void	compute() const noexcept {this->tabSignal = this->helper.Compute(this->Parameters, this->SimulParams);};
 	
 	// private accessors
 	[[nodiscard]] bool	getNeedToRecompute() const noexcept {return this->needToRecompute;};
 	void	setNeedToRecompute(bool value) const noexcept {this->needToRecompute = value;};
 	
 	public:
-	// create constructor
-
 	// SMF
-	Sinus() = default;						/**< Default Ctor	*/
+	Sinus() = default ;						/**< Default Ctor	*/
 	
 	virtual ~Sinus() = default;				/**< Default Dtor	*/
 	
@@ -124,9 +120,7 @@ class Sinus{
 	 * @return value of A0 parameter (inside the Parameters structure)
 	 * [[nodiscard]] : the return value should not be discarded (compiler warning)
 	 */
-	[[nodiscard]] float 	getA0()const  noexcept {
-        return this->Parameters.A0;
-    };
+	[[nodiscard]] float 	getA0()const  noexcept {return this->Parameters.A0;};
 	
 	/**
 	 * setter (public) for the A0 parameter (inside the Parameters structure)
@@ -134,20 +128,59 @@ class Sinus{
 	 * @param[in]	A0	Value of A0
 	 * noexcept : this method throws no exception
 	 */
-	void	setA0(float A0) noexcept {/*this->Parameters.A0 = A0;setNeedToRecompute(true);*/};
-	
-	/**
-	 * getter (public) for the Omega parameter 
-	 * 
-	 * const : callable with a const object  
+	void	setA0(float A0) noexcept {this->Parameters.A0 = A0;setNeedToRecompute(true);};
+
+    /**
+	 * getter (public) for the Ampliitude parameter
+	 *
+	 * const : callable with a const object
 	 * noexcept : this method throws no exception
+	 *
+	 * @return value of A0 parameter (inside the Parameters structure)
+	 * [[nodiscard]] : the return value should not be discarded (compiler warning)
+	 */
+
+    [[nodiscard]] float 	getAmplitude()const  noexcept {return this->Parameters.Amplitude;};
+
+    /**
+	 * setter (public) for the A0 parameter (inside the Parameters structure)
+	 *
+	 * @param[in]	A0	Value of A0
+	 * noexcept : this method throws no exception
+	 */
+
+    void	setAmplitude(float Amplitude) noexcept {this->Parameters.Amplitude = Amplitude;setNeedToRecompute(true);};
+
+    /**
+	 * getter (public) for the Phi0 parameter
+	 *
+	 * const : callable with a const object
+	 * noexcept : this method throws no exception
+	 *
+	 * @return value of Phi0 parameter (rad, [-2pi; +2pi] range) (inside the Parameters structure)
+	 * [[nodiscard]] : the return value should not be discarded (compiler warning)
+	 */
+    [[nodiscard]] float	getPhi0() const noexcept {return this->Parameters.Phi0;};
+
+    /**
+     * setter (public) for the Phi0 parameter (inside the Parameters structure)
+     * 		if the given parameter is outside the [-2pi; +2pi] range, it'll be shrinked to fit.
+     *
+     * @param[in]	_Phi0	Value of Phi0
+     * noexcept : this method throws no exception
+     */
+    void	setPhi0(float _Phi0) noexcept {this->Parameters.Phi0 = std::fmod(_Phi0 , (2*std::numbers::pi) );setNeedToRecompute(true);};
+
+	/**
+	 * getter (public) for the Omega parameter
 	 * 
-	 * @return value of Omega parameter (rad/s) (inside the Parameters structure)
+	 * const : callable with a const object
+	 * noexcept : this method throws no exception
+	 *
+	 * @return value of Phi0 parameter (rad/s) (inside the Parameters structure)
 	 * [[nodiscard]] : the return value should not be discarded (compiler warning)
 	 */	
-	[[nodiscard]] float 	getOmega()const noexcept{
-        return(this->Parameters.Omega);
-    };
+	[[nodiscard]] float 	getOmega()const noexcept{return(this->Parameters.Omega);};
 	
 	/**
 	 * setter (public) for the Omega parameter (inside the Parameters structure)
@@ -155,13 +188,69 @@ class Sinus{
 	 * @param[in]	_Omega	Value of Omega
 	 * @throw 	std::domain_error("Omega can’t be negative.") if the given parameter is negative
 	 */
-	void	setOmega(float _Omega){
-        if (_Omega < 0) throw std::domain_error("Omega can’t be negative.") ;
-        this->Parameters.Omega = _Omega;setNeedToRecompute(true);
-    };
-		
-	
-	/**
+	void	setOmega(float _Omega){if (_Omega < 0) throw std::domain_error("Omega can’t be negative.") ;this->Parameters.Omega = _Omega;setNeedToRecompute(true);};
+
+    /**
+	 * getter (public) for the tstart parameter
+	 *
+	 * const : callable with a const object
+	 * noexcept : this method throws no exception
+	 *
+	 * @return value of tStart parameter (inside the SimulParams structure)
+	 * [[nodiscard]] : the return value should not be discarded (compiler warning)
+	 */
+    [[nodiscard]] float	gettstart() const noexcept {return this->SimulParams.tstart;};
+
+    /**
+     * setter (public) for the tstart parameter
+     * 		tStart >= 0 and < tStop.
+     */
+    void	settstart(float _tstart){
+        if (_tstart < 0) throw std::domain_error("tstart can’t be negative.");
+        if (_tstart < SimulParams.tstop){throw std::overflow_error("tstart cant be greater or equal to tStop.");};
+        this->SimulParams.tstart = _tstart;
+        setNeedToRecompute(true);};
+
+    /**
+	 * getter (public) for the tstart parameter
+	 *
+	 * const : callable with a const object
+	 * noexcept : this method throws no exception
+	 */
+    [[nodiscard]] float 	gettstop()const  noexcept {return this->SimulParams.tstop;};
+
+    /**
+     * setter (public) for the tstop parameter
+     * 		tstop > 0 and > tstart
+     *
+     * @param[in]	_tstop		Value of tstop
+     */
+    //void	settstop(float _tstop);
+
+    /**
+     * getter (public) for the nbPoints parameter
+     *
+     * const : callable with a const object
+     * noexcept : this method throws no exception
+     *
+     * @return value of nbPoints (inside the SimulParams structure)
+     * [[nodiscard]] : the return value should not be discarded (compiler warning)
+     */
+    [[nodiscard]] unsigned int	getNbPoints()const  noexcept  {return this->SimulParams.nbPoints;};
+
+    /**
+     * setter (public) for the nbPoints parameter (inside the SimulParams structure)
+     * 		nbPoints must be > 0
+     *
+     * @param[in]	_nbPoints		Value of tStop
+     *
+     * @throw 	td::invalid_argument("nbPoints must be greater than 0.") if the given parameter is negative or nul.
+     */
+    void	setNbPoints(unsigned int _nbPoints) {if (_nbPoints == 0) throw std::invalid_argument("nbPoints must be greater than 0.");this->SimulParams.nbPoints = _nbPoints;setNeedToRecompute(true);};
+
+
+
+    /**
 	 * 	generate method
 	 * 		
 	 * 	@param[in] 	FileName(=defaultFileName)	The complete path of the data file to write.	
@@ -171,6 +260,7 @@ class Sinus{
 	 * @throw  std::ios::exceptions 
 	 */
 	unsigned int	generate(const std::filesystem::path FileName /*=defaultFileName*/)const;	// return value can be discarded
+
 };
 
 
